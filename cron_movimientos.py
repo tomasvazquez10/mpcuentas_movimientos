@@ -44,27 +44,34 @@ def ejecutar_cron():
 
     # 3. Esperar disponibilidad del archivo (Polling de 2 minutos)
     download_url = None
-    max_intentos = 24  # 24 intentos x 5 segundos = 120 segundos (2 minutos)
+    max_intentos = 24  # 24 intentos x 5 segundos = 120 segundos
     
     for intento in range(1, max_intentos + 1):
         time.sleep(5)
-        print(f"Verificando estado del reporte... (Intento {intento}/{max_intentos})")
+        print(f"Verificando disponibilidad del reporte... (Intento {intento}/{max_intentos})")
         
         res_list = requests.get("https://api.mercadopago.com/v1/account/release_report/list", headers=headers_mp)
         
         if res_list.status_code == 200:
             reportes = res_list.json()
-            item = next((r for r in reportes if r.get("id") == reporte_id), None)
             
-            if item:
-                estado_actual = item.get("status")
-                print(f"Estado actual del reporte {reporte_id}: '{estado_actual}'")
+            if reportes and len(reportes) > 0:
+                # Tomamos el reporte más reciente (el primero del array)
+                ultimo_reporte = reportes[0]
                 
-                if estado_actual in ["enabled", "ready"]:
-                    file_name = item.get("file_name")
-                    download_url = f"https://api.mercadopago.com/v1/account/release_report/download/{file_name}"
-                    print(f"¡Reporte listo! Archivo: {file_name}")
-                    break
+                # Verificamos que coincida el rango de fechas solicitado
+                mismo_inicio = ultimo_reporte.get("begin_date") == begin_date
+                mismo_fin = ultimo_reporte.get("end_date") == end_date
+                estado = ultimo_reporte.get("status")
+                
+                if mismo_inicio and mismo_fin:
+                    print(f"Reporte encontrado (ID Final: {ultimo_reporte.get('id')}) | Estado: '{estado}'")
+                    
+                    if estado in ["enabled", "ready"]:
+                        file_name = ultimo_reporte.get("file_name")
+                        download_url = f"https://api.mercadopago.com/v1/account/release_report/download/{file_name}"
+                        print(f"¡Reporte listo para descargar! Archivo: {file_name}")
+                        break
 
     if not download_url:
         print("El reporte no estuvo listo después de 2 minutos de espera.")
