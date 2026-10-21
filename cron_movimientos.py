@@ -32,14 +32,15 @@ def ejecutar_cron():
 
     res = requests.post(url_reporte, headers=headers_mp, json=payload)
     
-    if res.status_code not in [200, 201]:
+    # 200 (OK), 201 (Created) y 202 (Accepted) son respuestas exitosas
+    if res.status_code not in [200, 201, 202]:
         print(f"Error HTTP {res.status_code} al solicitar el reporte:", res.text)
         return
 
     data_reporte = res.json()
     reporte_id = data_reporte.get("id")
     
-    print(f"Reporte solicitado con éxito. ID asignado: {reporte_id}. Esperando procesamiento...")
+    print(f"Reporte solicitado con éxito (Status {res.status_code}). ID: {reporte_id}. Esperando procesamiento...")
 
     # 3. Esperar disponibilidad del archivo (Polling)
     download_url = None
