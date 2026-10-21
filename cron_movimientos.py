@@ -14,12 +14,12 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 headers_mp = {"Authorization": f"Bearer {MP_ACCESS_TOKEN}"}
 
 def ejecutar_cron():
-    # 1. Definir rango de fechas para la consulta del día anterior (UTC-3)
+    # 1. Definir rango de fechas sin milisegundos (Formato aceptado por /release_report)
     tz_arg = timezone(timedelta(hours=-3))
     ayer = datetime.now(tz_arg) - timedelta(days=1)
     
-    begin_date = ayer.strftime("%Y-%m-%dT03:00:00.000Z")
-    end_date = (ayer + timedelta(days=1)).strftime("%Y-%m-%dT02:59:59.999Z")
+    begin_date = ayer.strftime("%Y-%m-%dT03:00:00Z")
+    end_date = (ayer + timedelta(days=1)).strftime("%Y-%m-%dT02:59:59Z")
 
     print(f"Solicitando reporte para el rango: {begin_date} a {end_date}")
 
@@ -29,7 +29,7 @@ def ejecutar_cron():
         "begin_date": begin_date,
         "end_date": end_date
     }
-
+    
     res = requests.post(url_reporte, headers=headers_mp, json=payload)
     if res.status_code not in [200, 201]:
         print("Error al solicitar el reporte:", res.text)
