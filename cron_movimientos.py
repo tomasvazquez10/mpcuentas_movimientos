@@ -42,21 +42,32 @@ def ejecutar_cron():
     
     print(f"Reporte solicitado con éxito (Status {res.status_code}). ID: {reporte_id}. Esperando procesamiento...")
 
-    # 3. Esperar disponibilidad del archivo (Polling)
+    # 3. Esperar disponibilidad del archivo (Polling de 2 minutos)
     download_url = None
-    for _ in range(12):
+    max_intentos = 24  # 24 intentos x 5 segundos = 120 segundos (2 minutos)
+    
+    for intento in range(1, max_intentos + 1):
         time.sleep(5)
-        res_list = requests.get("https://api.mercadopago.com/v1/account/release_report/list", headers=headers_mp)
-        reportes = res_list.json()
+        print(f"Verificando estado del reporte... (Intento {intento}/{max_intentos})")
         
-        item = next((r for r in reportes if r.get("id") == reporte_id), None)
-        if item and item.get("status") in ["enabled", "ready"]:
-            file_name = item.get("file_name")
-            download_url = f"https://api.mercadopago.com/v1/account/release_report/download/{file_name}"
-            break
+        res_list = requests.get("https://api.mercadopago.com/v1/account/release_report/list", headers=headers_mp)
+        
+        if res_list.status_code == 200:
+            reportes = res_list.json()
+            item = next((r for r in reportes if r.get("id") == reporte_id), None)
+            
+            if item:
+                estado_actual = item.get("status")
+                print(f"Estado actual del reporte {reporte_id}: '{estado_actual}'")
+                
+                if estado_actual in ["enabled", "ready"]:
+                    file_name = item.get("file_name")
+                    download_url = f"https://api.mercadopago.com/v1/account/release_report/download/{file_name}"
+                    print(f"¡Reporte listo! Archivo: {file_name}")
+                    break
 
     if not download_url:
-        print("El reporte no estuvo listo a tiempo.")
+        print("El reporte no estuvo listo después de 2 minutos de espera.")
         return
 
     # 4. Descargar y procesar el CSV
